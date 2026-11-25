@@ -603,11 +603,48 @@ var ElementorProFrontendConfig = {"ajaxurl":"https:\/\/moradamoveis.com\/wp-admi
 
 
 <style>
+	#ht-ctc-chat {
+		right: 15px !important;
+		bottom: 45px !important;
+		width: 44px !important;
+		height: 44px !important;
+	}
+
+	#ht-ctc-chat .ctc_s_7 {
+		position: relative !important;
+		display: block !important;
+		width: 44px !important;
+		height: 44px !important;
+	}
+
+	#ht-ctc-chat .ctc_s_7_icon_padding {
+		position: absolute !important;
+		right: 0 !important;
+		bottom: 0 !important;
+	}
+
+	#ht-ctc-chat .ctc_s_7_cta {
+		position: absolute !important;
+		top: calc(100% + 8px) !important;
+		right: 0 !important;
+		width: max-content !important;
+		max-width: calc(100vw - 24px);
+		margin: 0 !important;
+		text-align: right;
+		white-space: nowrap;
+	}
+
 	.lead-dialog {
 		box-sizing: border-box;
-		width: min(560px, calc(100vw - 32px));
-		max-width: calc(100vw - 32px);
-		max-height: calc(100vh - 32px);
+		position: fixed;
+		inset: auto;
+		top: 0;
+		left: 0;
+		z-index: 100000000;
+		width: min(440px, calc(100vw - 24px));
+		max-width: calc(100vw - 24px);
+		max-height: calc(100vh - 24px);
+		margin: 0;
 		padding: 0;
 		border: 0;
 		overflow: visible;
@@ -615,16 +652,10 @@ var ElementorProFrontendConfig = {"ajaxurl":"https:\/\/moradamoveis.com\/wp-admi
 		color: #2d2d2d;
 	}
 
-	.lead-dialog::backdrop {
-		background: rgba(0, 0, 0, 0.5);
-		backdrop-filter: blur(12px);
-		-webkit-backdrop-filter: blur(12px);
-	}
-
 	.lead-modal {
 		position: relative;
 		box-sizing: border-box;
-		max-height: calc(100vh - 32px);
+		max-height: calc(100vh - 24px);
 		overflow-y: auto;
 		padding: 32px;
 		border-radius: 12px;
@@ -814,7 +845,7 @@ var ElementorProFrontendConfig = {"ajaxurl":"https:\/\/moradamoveis.com\/wp-admi
 					<span id="lead-phone-hint" class="lead-modal__description">Informe um telefone com DDD.</span>
 				</div>
 				<div class="lead-modal__field lead-modal__field--full">
-					<label for="lead-profile">Perfil / Função</label>
+					<label for="lead-profile">Você é:</label>
 					<select id="lead-profile" name="perfil" required>
 						<option value="" selected disabled>Selecione uma opção</option>
 						<option value="Cliente Final (PF)">Cliente Final (PF)</option>
@@ -826,7 +857,7 @@ var ElementorProFrontendConfig = {"ajaxurl":"https:\/\/moradamoveis.com\/wp-admi
 				</div>
 			</div>
 			<label class="lead-modal__consent" for="lead-consent">
-				<input id="lead-consent" name="consentimento" type="checkbox" required>
+				<input id="lead-consent" name="consentimento" type="checkbox" required checked>
 				<span>Autorizo o envio dos dados deste formulário para atendimento e contato sobre minha solicitação.</span>
 			</label>
 			<p class="lead-modal__status" id="lead-modal-status" role="status" aria-live="polite"></p>
@@ -911,13 +942,30 @@ var ElementorProFrontendConfig = {"ajaxurl":"https:\/\/moradamoveis.com\/wp-admi
 			return destination.href;
 		}
 
+		function positionDialog() {
+			const margin = 12;
+			const widgetRightOffset = 15 + 44 + 12;
+			const viewportWidth = document.documentElement.clientWidth || window.innerWidth;
+			const viewportHeight = window.innerHeight;
+			dialog.style.width = Math.min(440, Math.max(1, viewportWidth - widgetRightOffset - margin)) + "px";
+			const dialogRect = dialog.getBoundingClientRect();
+			const maxLeft = Math.max(margin, viewportWidth - dialogRect.width - margin);
+			const maxTop = Math.max(margin, viewportHeight - dialogRect.height - margin);
+			const left = Math.max(margin, Math.min(viewportWidth - widgetRightOffset - dialogRect.width, maxLeft));
+			const top = Math.max(margin, Math.min(viewportHeight - 45 - 44 - 12 - dialogRect.height, maxTop));
+
+			dialog.style.left = left + "px";
+			dialog.style.top = top + "px";
+		}
+
 		function openDialog(whatsAppUrl, trigger) {
 			pendingWhatsAppUrl = whatsAppUrl;
 			lastTrigger = trigger;
 			status.textContent = "";
 			if (!dialog.open) {
-				dialog.showModal();
+				dialog.show();
 			}
+			positionDialog();
 			nameInput.focus();
 		}
 
@@ -928,6 +976,14 @@ var ElementorProFrontendConfig = {"ajaxurl":"https:\/\/moradamoveis.com\/wp-admi
 			}
 			const link = target.closest("a[href]");
 			const chatWidget = target.closest("#ht-ctc-chat");
+			if (chatWidget && dialog.open) {
+				event.preventDefault();
+				event.stopPropagation();
+				event.stopImmediatePropagation();
+				dialog.close();
+				return;
+			}
+			const chatIcon = chatWidget && chatWidget.querySelector(".ctc_s_7_icon_padding");
 			const candidateUrl = link ? link.href : chatWidget ? getWidgetWhatsAppUrl() : "";
 			if (!candidateUrl) {
 				return;
@@ -948,8 +1004,23 @@ var ElementorProFrontendConfig = {"ajaxurl":"https:\/\/moradamoveis.com\/wp-admi
 			event.preventDefault();
 			event.stopPropagation();
 			event.stopImmediatePropagation();
-			openDialog(destination.href, link || chatWidget);
+			openDialog(destination.href, link || chatIcon || chatWidget);
 		}, true);
+
+		document.addEventListener("click", function (event) {
+			const target = event.target instanceof Element ? event.target : event.target.parentElement;
+			if (dialog.open && target && !dialog.contains(target)) {
+				dialog.close();
+			}
+		});
+
+		function repositionOpenDialog() {
+			if (dialog.open) {
+				positionDialog();
+			}
+		}
+
+		window.addEventListener("resize", repositionOpenDialog);
 
 		nameInput.addEventListener("input", validateName);
 		phoneInput.addEventListener("input", function () {
@@ -961,12 +1032,6 @@ var ElementorProFrontendConfig = {"ajaxurl":"https:\/\/moradamoveis.com\/wp-admi
 			dialog.close();
 		});
 
-		dialog.addEventListener("click", function (event) {
-			if (event.target === dialog) {
-				dialog.close();
-			}
-		});
-
 		dialog.addEventListener("close", function () {
 			if (submissionController) {
 				submissionController.abort();
@@ -975,8 +1040,11 @@ var ElementorProFrontendConfig = {"ajaxurl":"https:\/\/moradamoveis.com\/wp-admi
 			submitButton.disabled = false;
 			status.textContent = "";
 			form.reset();
+			dialog.style.left = "";
+			dialog.style.top = "";
+			dialog.style.width = "";
 			pendingWhatsAppUrl = "";
-			if (lastTrigger && document.contains(lastTrigger)) {
+			if (lastTrigger && document.contains(lastTrigger) && dialog.contains(document.activeElement)) {
 				lastTrigger.focus();
 			}
 			lastTrigger = null;
